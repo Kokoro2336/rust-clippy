@@ -53,7 +53,7 @@ error: multiply and add expressions can be calculated more efficiently and accur
   --> tests/ui/floating_point_mul_add.rs:36:13
    |
 LL |     let _ = a * b * c + d;
-   |             ^^^^^^^^^^^^^ help: consider using: `(a * b).mul_add(c, d)`
+   |             ^^^^^^^^^^^^^ help: consider using: `a * b.mul_add(c, d)`
 
 error: multiply and add expressions can be calculated more efficiently and accurately
   --> tests/ui/floating_point_mul_add.rs:39:13
@@ -191,7 +191,7 @@ error: multiply and add expressions can be calculated more efficiently and accur
   --> tests/ui/floating_point_mul_add.rs:148:13
    |
 LL |     let _ = 1.0 - y * 0.3;
-   |             ^^^^^^^^^^^^^ help: consider using: `f32::mul_add(y, -0.3, 1.0)`
+   |             ^^^^^^^^^^^^^ help: consider using: `y.mul_add(-0.3, 1.0)`
 
 error: multiply and add expressions can be calculated more efficiently and accurately
   --> tests/ui/floating_point_mul_add.rs:153:13
@@ -211,5 +211,23 @@ error: multiply and add expressions can be calculated more efficiently and accur
 LL |     let _ = 1.0 - y * 0.3;
    |             ^^^^^^^^^^^^^ help: consider using: `y.mul_add(-0.3, 1.0)`
 
-error: aborting due to 35 previous errors
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_mul_add.rs:170:13
+   |
+LL |     let _ = x + y * z;
+   |             ^^^^^^^^^ help: consider using: `f32::mul_add(y, z, x)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_mul_add.rs:172:13
+   |
+LL |     let _ = y * z + x;
+   |             ^^^^^^^^^ help: consider using: `f32::mul_add(y, z, x)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_mul_add.rs:176:13
+   |
+LL |     let _ = y + a * z;
+   |             ^^^^^^^^^ help: consider using: `a.mul_add(z, y)`
+
+error: aborting due to 38 previous errors
 

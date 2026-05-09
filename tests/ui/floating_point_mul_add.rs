@@ -163,4 +163,16 @@ fn issue16954() {
     let y = k3 + OFFSET;
     let _ = 1.0 - y * 0.3;
     //~^ suboptimal_flops
+
+    let x = 0.1;
+    let y = 0.2;
+    let z = 0.3;
+    let _ = x + y * z;
+    //~^ suboptimal_flops
+    let _ = y * z + x;
+    //~^ suboptimal_flops
+
+    let a: f32 = 0.1;
+    let _ = y + a * z;
+    //~^ suboptimal_flops
 }

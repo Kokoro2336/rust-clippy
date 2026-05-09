@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{get_parent_expr, has_ambiguous_literal_in_expr, sym};
+use clippy_utils::{get_parent_expr, has_unambiguous_ty_in_expr, sym};
 use rustc_ast::AssignOpKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment};
@@ -93,16 +93,12 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
             };
             let mut app = Applicability::MachineApplicable;
 
-            // Whether the receiver itself is non-literal but contains an ambiguous literal, e.g. `let x = 0.1`.
-            let has_ambiguous_literal_in_recv_var =
-                !matches!(recv.kind, ExprKind::Lit(_)) && has_ambiguous_literal_in_expr(cx, recv);
+            let recv_is_lit = matches!(recv.kind, ExprKind::Lit(_));
 
-            let recv_sugg = if has_ambiguous_literal_in_recv_var {
-                // If the receiver contains an ambiguous literal, we'll call the method with the inferred type
-                // later, so that we don't need type annotations any more.
-                Sugg::hir_with_applicability(cx, recv, "_", &mut app)
-            } else {
+            let recv_sugg = if recv_is_lit {
                 super::lib::prepare_receiver_sugg(cx, recv, &mut app)
+            } else {
+                Sugg::hir_with_applicability(cx, recv, "_", &mut app)
             };
 
             let (arg1, arg2) = if is_from_rhs {
@@ -117,12 +113,13 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 )
             };
 
-            let mul_add_call = if has_ambiguous_literal_in_recv_var {
-                // If the receiver contains an ambiguous literal, we need to call `mul_add` with its inferred type.
-                format!("{}::mul_add({recv_sugg}, {arg1}, {arg2})", lhs_typ.name_str())
-            } else {
-                format!("{recv_sugg}.mul_add({arg1}, {arg2})")
-            };
+            let mul_add_call =
+                if recv_is_lit || (!matches!(recv.kind, ExprKind::Lit(_)) && has_unambiguous_ty_in_expr(cx, recv)) {
+                    format!("{recv_sugg}.mul_add({arg1}, {arg2})")
+                } else {
+                    // If the receiver contains an ambiguous literal, we need to call `mul_add` with its inferred type.
+                    format!("{}::mul_add({recv_sugg}, {arg1}, {arg2})", lhs_typ.name_str())
+                };
 
             diag.span_suggestion(
                 expr.span,

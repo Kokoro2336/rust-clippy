@@ -1827,3 +1827,69 @@ pub fn has_ambiguous_literal_in_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> b
         _ => false,
     }
 }
+
+/// Returns true if the expression contains any source-level type anchor, such as a literal with a
+/// suffix or a variable with an explicitly annotated type that could be inferred as either f32/f64
+/// or i32/i64.
+pub fn has_unambiguous_ty_in_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    match expr.kind {
+        ExprKind::Path(ref qpath) => {
+            if let Res::Local(hir_id) = cx.qpath_res(qpath, expr.hir_id)
+                && let Node::LetStmt(local) = cx.tcx.parent_hir_node(hir_id)
+            {
+                return local.ty.is_some() || local.init.is_some_and(|init| has_unambiguous_ty_in_expr(cx, init));
+            }
+            true
+        },
+
+        ExprKind::Lit(lit) => !matches!(
+            lit.node,
+            ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) | ast::LitKind::Int(_, ast::LitIntType::Unsuffixed)
+        ),
+
+        ExprKind::Cast(..) | ExprKind::Type(..) => true,
+
+        ExprKind::Array(exprs) | ExprKind::Tup(exprs) => exprs.iter().any(|e| has_unambiguous_ty_in_expr(cx, e)),
+
+        ExprKind::Assign(lhs, rhs, _) | ExprKind::AssignOp(_, lhs, rhs) | ExprKind::Binary(_, lhs, rhs) => {
+            has_unambiguous_ty_in_expr(cx, lhs) || has_unambiguous_ty_in_expr(cx, rhs)
+        },
+
+        ExprKind::Unary(_, e)
+        | ExprKind::DropTemps(e)
+        | ExprKind::AddrOf(_, _, e)
+        | ExprKind::Field(e, _)
+        | ExprKind::Index(e, _, _)
+        | ExprKind::Yield(e, _) => has_unambiguous_ty_in_expr(cx, e),
+
+        ExprKind::MethodCall(_, receiver, args, _) | ExprKind::Call(receiver, args) => {
+            has_unambiguous_ty_in_expr(cx, receiver) || args.iter().any(|e| has_unambiguous_ty_in_expr(cx, e))
+        },
+
+        ExprKind::Closure(Closure { body, .. }) => {
+            let body = cx.tcx.hir_body(*body);
+            let closure_expr = crate::peel_blocks(body.value);
+            has_unambiguous_ty_in_expr(cx, closure_expr)
+        },
+
+        ExprKind::Block(blk, _) => blk.expr.as_ref().is_some_and(|e| has_unambiguous_ty_in_expr(cx, e)),
+
+        ExprKind::If(cond, then_expr, else_expr) => {
+            has_unambiguous_ty_in_expr(cx, cond)
+                || has_unambiguous_ty_in_expr(cx, then_expr)
+                || else_expr.as_ref().is_some_and(|e| has_unambiguous_ty_in_expr(cx, e))
+        },
+
+        ExprKind::Match(scrutinee, arms, _) => {
+            has_unambiguous_ty_in_expr(cx, scrutinee) || arms.iter().any(|arm| has_unambiguous_ty_in_expr(cx, arm.body))
+        },
+
+        ExprKind::Loop(body, ..) => body.expr.is_some_and(|e| has_unambiguous_ty_in_expr(cx, e)),
+
+        ExprKind::Ret(opt_expr) | ExprKind::Break(_, opt_expr) => {
+            opt_expr.as_ref().is_some_and(|e| has_unambiguous_ty_in_expr(cx, e))
+        },
+
+        _ => false,
+    }
+}

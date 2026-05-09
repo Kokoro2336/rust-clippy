@@ -33,7 +33,7 @@ fn main() {
     //~^ suboptimal_flops
     let _ = a.mul_add(b, c);
     //~^ suboptimal_flops
-    let _ = (a * b).mul_add(c, d);
+    let _ = a * b.mul_add(c, d);
     //~^ suboptimal_flops
 
     let _ = a.mul_add(b, c).mul_add(a.mul_add(b, c), a.mul_add(b, c)) + c;
@@ -145,7 +145,7 @@ fn issue16954() {
 
     let k3 = k * k * k;
     let y = k3 + 0.1;
-    let _ = f32::mul_add(y, -0.3, 1.0);
+    let _ = y.mul_add(-0.3, 1.0);
     //~^ suboptimal_flops
 
     let k3 = k * k * k;
@@ -162,5 +162,17 @@ fn issue16954() {
     let k3 = k * k * k;
     let y = k3 + OFFSET;
     let _ = y.mul_add(-0.3, 1.0);
+    //~^ suboptimal_flops
+
+    let x = 0.1;
+    let y = 0.2;
+    let z = 0.3;
+    let _ = f32::mul_add(y, z, x);
+    //~^ suboptimal_flops
+    let _ = f32::mul_add(y, z, x);
+    //~^ suboptimal_flops
+
+    let a: f32 = 0.1;
+    let _ = a.mul_add(z, y);
     //~^ suboptimal_flops
 }
