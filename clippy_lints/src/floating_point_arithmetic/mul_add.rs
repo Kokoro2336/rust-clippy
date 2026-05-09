@@ -98,7 +98,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
             let recv_sugg = if recv_is_lit {
                 super::lib::prepare_receiver_sugg(cx, recv, &mut app)
             } else {
-                Sugg::hir_with_applicability(cx, recv, "_", &mut app)
+                Sugg::hir_with_applicability(cx, recv, "_", &mut app).maybe_paren()
             };
 
             let (arg1, arg2) = if is_from_rhs {
