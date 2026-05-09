@@ -113,13 +113,12 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 )
             };
 
-            let mul_add_call =
-                if recv_is_lit || (!matches!(recv.kind, ExprKind::Lit(_)) && has_unambiguous_ty_in_expr(cx, recv)) {
-                    format!("{recv_sugg}.mul_add({arg1}, {arg2})")
-                } else {
-                    // If the receiver contains an ambiguous literal, we need to call `mul_add` with its inferred type.
-                    format!("{}::mul_add({recv_sugg}, {arg1}, {arg2})", lhs_typ.name_str())
-                };
+            let mul_add_call = if recv_is_lit || has_unambiguous_ty_in_expr(cx, recv) {
+                format!("{recv_sugg}.mul_add({arg1}, {arg2})")
+            } else {
+                // If the receiver contains an ambiguous literal, we need to call `mul_add` with its inferred type.
+                format!("{}::mul_add({recv_sugg}, {arg1}, {arg2})", lhs_typ.name_str())
+            };
 
             diag.span_suggestion(
                 expr.span,
